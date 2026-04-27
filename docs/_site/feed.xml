@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/terraform-hpc/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/terraform-hpc/" rel="alternate" type="text/html" /><updated>2026-04-27T14:55:33-07:00</updated><id>http://localhost:4000/terraform-hpc/feed.xml</id><title type="html">terraform-hpc</title><subtitle>Terraform templates for small HPC clusters you can setup and configure to learn about administering different kinds of cluster workloads</subtitle><entry><title type="html">Welcome to terraform-hpc</title><link href="http://localhost:4000/terraform-hpc/2026/04/27/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to terraform-hpc" /><published>2026-04-27T13:12:42-07:00</published><updated>2026-04-27T13:12:42-07:00</updated><id>http://localhost:4000/terraform-hpc/2026/04/27/welcome-to-jekyll</id><content type="html" xml:base="http://localhost:4000/terraform-hpc/2026/04/27/welcome-to-jekyll.html"><![CDATA[<p>Welcome to terraform-hpc! This is a place where you can find several 
+terraform templates to test some small HPC clusters on AWS to learn how
+to setup and run HPC instances and jobs. To give some structure to our 
+posts, there’s a progression of more and more complex deployments we’ll
+build. Today we’ll start with the simplest cluster, a 2-node system with
+(1) an admin/login node and (2) a compute node.</p>
+
+<p>Some jekyll links for web maintainers:</p>
+
+<p><a href="https://jekyllrb.com/docs/home">jekyll-docs</a>
+<a href="https://github.com/jekyll/jekyll">jekyll-gh</a></p>]]></content><author><name></name></author><summary type="html"><![CDATA[Welcome to terraform-hpc! This is a place where you can find several terraform templates to test some small HPC clusters on AWS to learn how to setup and run HPC instances and jobs. To give some structure to our posts, there’s a progression of more and more complex deployments we’ll build. Today we’ll start with the simplest cluster, a 2-node system with (1) an admin/login node and (2) a compute node.]]></summary></entry></feed>
