@@ -18,7 +18,7 @@ resource "aws_security_group" "cluster_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["73.67.194.78"]
+    cidr_blocks = [var.YOUR_SSH_IP]
   }
 
   # cluster node <-> node communication

@@ -13,5 +13,10 @@ variable "cluster_size" {
 
 variable "existing_s3_bucket" {
   type = string
-  description = "negaunt-git-tutorials-292600391949-us-west-2-an"
+  description = "path to existing S3 bucket to store terraform state"
+}
+
+variable "YOUR_SSH_IP" {
+  type        = string
+  description = "Single IP addr allowed for SSH access to new instances"
 }
