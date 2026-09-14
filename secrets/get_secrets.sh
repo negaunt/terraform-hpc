@@ -21,10 +21,14 @@ if ! aws sts get-caller-identity; then
 fi;
 
 for FILE in ${S3_KEYS}; do
+	if [ -f "$FILE" ]; then continue; fi
 	echo "fetching secret: $FILE"
 	aws s3 cp s3://${S3_BUCKET}/${FILE} ./${FILE}
-	if [[ $? -ne 0 ]]; then
+	chmod 600 $FILE
+	if [ $? -ne 0 ]; then
 		echo "error: aws bucket copy failed for key='${FILE}'"
 		exit 1;
 	fi;
 done;
+
+
