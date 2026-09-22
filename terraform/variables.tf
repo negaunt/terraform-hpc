@@ -4,15 +4,21 @@ variable "aws_region" {
 
 variable "instance_type" {
   description = "AWS EC2 instance type (e.g., t3.small, t3.medium, m6i.large)"
-  default = "t3.small" # 2 vcpu, 2GB ram 
+  default     = "t3.small" # 2 vcpu, 2GB ram 
 }
 
-variable "cluster_size" {
-  default = 1 
+# number of head/login nodes
+variable "head_nodes" {
+  default = 1
+}
+
+# number of compute nodes
+variable "compute_nodes" {
+  default = 1
 }
 
 variable "existing_s3_bucket" {
-  type = string
+  type        = string
   description = "path to existing S3 bucket to store terraform state"
 }
 
