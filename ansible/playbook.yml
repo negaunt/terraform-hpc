@@ -1,5 +1,5 @@
 ---
-- hosts: cluster
+- hosts: head_nodes
   become: yes
   tasks:
     - name: Update apt cache
@@ -10,7 +10,21 @@
     - name: Install common utilities
       apt:
         name:
-          - curl
-          - git
-          - htop
+          - net-tools
+          - nfs-kernel-server
+          - lsscsi
         state: present
+
+    - name: Create shared HPC directory
+      file:
+        path: /mnt/hpc-shared
+        state: directory
+        owner: nobody
+        group: nogroup
+        mode: '0755'
+
+#    - name: Configure NFS export for the AWS VPC subnet
+#      lineinfile:
+#        path: /etc/exports
+#        line: "/mnt/hpc-shared 0.0.0.0/16(rw,sync,no_subtree_check,no_root_squash)"
+#      notify: Restart nfs server
