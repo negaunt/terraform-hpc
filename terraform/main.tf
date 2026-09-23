@@ -86,16 +86,74 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-resource "aws_instance" "cluster_nodes" {
-  count                  = var.cluster_size
-  #ami                    = "ami-07c589821f2b3036a" # Ubuntu 24.04 LTS (Verify ID for your region)
-  ami = data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
-  key_name               = "terraform-hpc-cluster-ssh-key"  # created by AWS for EC2 
-  vpc_security_group_ids = [aws_security_group.cluster_sg.id]
+# define head/admin node config
+resource "aws_instance" "head_nodes" {
+  count         = var.head_nodes
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type
 
+  # AWS registered public key for external/internal ssh access
+  key_name = "terraform-hpc-cluster-ssh-key"
+
+  # provision with durable 100GB disk, will show up as 1st nvme disk
+  ebs_block_device {
+    device_name           = "/dev/sdf"
+    volume_size           = 100
+    volume_type           = "gp3"
+    delete_on_termination = false
+  }
+
+  # attach to external firewall and internal network
+  vpc_security_group_ids = [aws_security_group.external_sg.id]
+  subnet_id     = data.aws_subnets.default.ids[0]
+  
   tags = {
-    Name = "cluster-node-${count.index + 1}"
+    Name = "head-node-${count.index}"
   }
 }
 
+# define hardware for compute nodes 
+resource "aws_instance" "compute_nodes" {
+  count         = var.compute_nodes
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type
+
+  # AWS registered public key for external/internal ssh access
+  key_name = "terraform-hpc-cluster-ssh-key"
+
+  # attach to internal firewall and network
+  vpc_security_group_ids = [aws_security_group.internal_sg.id]
+  subnet_id     = data.aws_subnets.default.ids[0]
+  associate_public_ip_address = false
+  
+  tags = {
+    Name = "cluster-node-${count.index}"
+  }
+}
+
+# create secondary internal Network Interface for each cluster node
+resource "aws_network_interface" "internal_nic" {
+  count           = local.cluster_nodes
+  subnet_id       = data.aws_subnets.default.ids[0]
+  security_groups = [aws_security_group.internal_sg.id]
+
+  tags = {
+    Name = "cluster-internal-nic-${count.index}"
+  }
+}
+
+# attach the secondary internal NIC (eth1) to head node
+resource "aws_network_interface_attachment" "internal_attachment-head" {
+  count                = var.head_nodes
+  device_index         = 1
+  instance_id          = aws_instance.head_nodes[count.index].id
+  network_interface_id = aws_network_interface.internal_nic[count.index].id
+}
+
+# attach the secondary internal NIC (eth1) to each compute node
+resource "aws_network_interface_attachment" "internal_attachment-compute" {
+  count                = var.compute_nodes
+  device_index         = 1
+  instance_id          = aws_instance.compute_nodes[count.index].id
+  network_interface_id = aws_network_interface.internal_nic[count.index + var.head_nodes].id
+}
