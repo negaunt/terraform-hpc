@@ -1,0 +1,7 @@
+[head_node]
+head-node-0 ansible_host={{ tf.head_node_public_ips[0] }} ansible_user=ubuntu ansible_ssh_private_key_file={{ tf.AWS_SSH_PRIV_KEY }} 
+
+[compute_nodes]
+{% for IP in tf.compute_node_private_ips %}
+compute-node-{{ loop.index0 }} ansible_host={{ IP }} ansible_user=ubuntu ansible_ssh_private_key_file={{ tf.AWS_SSH_PRIV_KEY }} ansible_ssh_common_args='-o ProxyCommand="ssh -i {{ tf.AWS_SSH_PRIV_KEY }} -W %h:%p -q ubuntu@{{ tf.head_node_public_ips }}"'
+{% endfor  %}
