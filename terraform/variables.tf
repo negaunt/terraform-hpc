@@ -31,3 +31,8 @@ variable "AWS_SSH_PRIV_KEY" {
   type        = string
   description = "relative path to AWS ssh private key file (PEM)"
 }
+
+variable "AWS_SSH_PUB_KEY" {
+  type        = string
+  description = "AWS registered public key for node ssh access"
+}
