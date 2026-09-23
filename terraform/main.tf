@@ -7,18 +7,40 @@ data "aws_vpc" "default" {
   default = true
 }
 
-# fetch subnets from the default VPC for the internal NICs
+# fetch default subnet info from the default VPC 
 data "aws_subnets" "default" {
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
   }
 }
+data "aws_subnet" "primary_subnet" {
+  id = data.aws_subnets.default.ids[0]
+}
 
-# internal security group for all cluster nodes
-resource "aws_security_group" "internal_sg" {
-  name        = "internal-node-sg"
-  description = "Allow internal cluster traffic"
+# create isolated subnet for backend cluster traffic (ie. NFS, MPI) 
+resource "aws_subnet" "backend_subnet" {
+  vpc_id = data.aws_vpc.default.id
+  # Choose a CIDR block that does not overlap with your existing default subnets
+  cidr_block        = "172.31.250.0/24"
+  availability_zone = data.aws_subnet.primary_subnet.availability_zone
+
+  tags = {
+    Name = "cluster-backend-subnet"
+  }
+}
+
+# internal security group for all cluster nodes - management traffic
+resource "aws_security_group" "internal_mgmt_sg" {
+  name        = "internal-node-mgmt-sg"
+  description = "Allow internal cluster mgmt traffic"
+  vpc_id      = data.aws_vpc.default.id
+}
+
+# internal security group for all cluster nodes - data traffic
+resource "aws_security_group" "internal_data_sg" {
+  name        = "internal-node-data-sg"
+  description = "Allow internal cluster data traffic"
   vpc_id      = data.aws_vpc.default.id
 }
 
@@ -33,23 +55,38 @@ resource "aws_security_group" "external_sg" {
 locals {
   # target for all cluster nodes
   all_cluster_sg_ids = {
-    internal = aws_security_group.internal_sg.id,
-    external = aws_security_group.external_sg.id
+    internal_mgmt = aws_security_group.internal_mgmt_sg.id,
+    internal_data = aws_security_group.internal_data_sg.id,
+    external      = aws_security_group.external_sg.id
   }
   # sum of all cluster nodes regardless of type
   cluster_nodes = var.head_nodes + var.compute_nodes
 }
 
-# Allow internal communication between cluster nodes
-resource "aws_security_group_rule" "allow_cluster_internal" {
-  for_each          = local.all_cluster_sg_ids
+# Allow internal mgmt communication between cluster nodes on eth0
+resource "aws_security_group_rule" "allow_cluster_internal_mgmt" {
+  for_each = {
+    external = aws_security_group.external_sg.id,
+    internal = aws_security_group.internal_mgmt_sg.id
+  }
   type              = "ingress"
-  description       = "Allow all internal traffic between cluster nodes"
+  description       = "Allow all internal mgmt traffic between cluster nodes"
   from_port         = 0
   to_port           = 0
   protocol          = "-1"
-  self              = true
+  cidr_blocks       = [data.aws_subnet.primary_subnet.cidr_block]
   security_group_id = each.value
+}
+
+# Allow internal data communication between cluster nodes on eth1
+resource "aws_security_group_rule" "allow_cluster_internal_data" {
+  type              = "ingress"
+  description       = "Allow all internal data traffic between cluster nodes"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = [aws_subnet.backend_subnet.cidr_block]
+  security_group_id = aws_security_group.internal_data_sg.id
 }
 
 # Allow outbound communication from cluster nodes
@@ -93,7 +130,7 @@ resource "aws_instance" "head_nodes" {
   instance_type = var.instance_type
 
   # AWS registered public key for external/internal ssh access
-  key_name = "terraform-hpc-cluster-ssh-key"
+  key_name = var.AWS_SSH_PUB_KEY
 
   # provision with durable 100GB disk, will show up as 1st nvme disk
   ebs_block_device {
@@ -103,10 +140,10 @@ resource "aws_instance" "head_nodes" {
     delete_on_termination = false
   }
 
-  # attach to external firewall and internal network
+  # configure eth0 subnet and firewall 
+  subnet_id              = data.aws_subnet.primary_subnet.id
   vpc_security_group_ids = [aws_security_group.external_sg.id]
-  subnet_id     = data.aws_subnets.default.ids[0]
-  
+
   tags = {
     Name = "head-node-${count.index}"
   }
@@ -119,13 +156,13 @@ resource "aws_instance" "compute_nodes" {
   instance_type = var.instance_type
 
   # AWS registered public key for external/internal ssh access
-  key_name = "terraform-hpc-cluster-ssh-key"
+  key_name = var.AWS_SSH_PUB_KEY
 
-  # attach to internal firewall and network
-  vpc_security_group_ids = [aws_security_group.internal_sg.id]
-  subnet_id     = data.aws_subnets.default.ids[0]
+  # configure eth0 subnet and firewall 
+  subnet_id                   = data.aws_subnet.primary_subnet.id
+  vpc_security_group_ids      = [aws_security_group.internal_mgmt_sg.id]
   associate_public_ip_address = false
-  
+
   tags = {
     Name = "compute-node-${count.index}"
   }
@@ -134,8 +171,8 @@ resource "aws_instance" "compute_nodes" {
 # create secondary internal Network Interface for each cluster node
 resource "aws_network_interface" "internal_nic" {
   count           = local.cluster_nodes
-  subnet_id       = data.aws_subnets.default.ids[0]
-  security_groups = [aws_security_group.internal_sg.id]
+  subnet_id       = aws_subnet.backend_subnet.id
+  security_groups = [aws_security_group.internal_data_sg.id]
 
   tags = {
     Name = "cluster-internal-nic-${count.index}"
