@@ -127,7 +127,7 @@ resource "aws_instance" "compute_nodes" {
   associate_public_ip_address = false
   
   tags = {
-    Name = "cluster-node-${count.index}"
+    Name = "compute-node-${count.index}"
   }
 }
 

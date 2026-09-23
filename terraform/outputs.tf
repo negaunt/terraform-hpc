@@ -16,3 +16,6 @@ output "compute_node_private_ips" {
     aws_network_interface.internal_nic[i].private_ip
   ]
 }
+output "AWS_SSH_PRIV_KEY" {
+  value = var.AWS_SSH_PRIV_KEY
+}

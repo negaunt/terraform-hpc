@@ -26,3 +26,8 @@ variable "YOUR_SSH_IP" {
   type        = string
   description = "Single IP addr allowed for SSH access to new instances"
 }
+
+variable "AWS_SSH_PRIV_KEY" {
+  type        = string
+  description = "relative path to AWS ssh private key file (PEM)"
+}
