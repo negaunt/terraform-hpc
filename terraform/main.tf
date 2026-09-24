@@ -143,6 +143,8 @@ resource "aws_instance" "head_nodes" {
   # configure eth0 subnet and firewall 
   subnet_id              = data.aws_subnet.primary_subnet.id
   vpc_security_group_ids = [aws_security_group.external_sg.id]
+  # allow head node to route compute traffic
+  source_dest_check = false
 
   tags = {
     Name = "head-node-${count.index}"
