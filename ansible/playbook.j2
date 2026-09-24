@@ -47,11 +47,11 @@
         group: nogroup
         mode: '0755'
 
-#    - name: Configure NFS export for the AWS VPC subnet
-#      lineinfile:
-#        path: /etc/exports
-#        line: "/mnt/hpc-shared 0.0.0.0/16(rw,sync,no_subtree_check,no_root_squash)"
-#      notify: Restart nfs server
+    - name: Configure NFS export for the AWS VPC subnet
+      lineinfile:
+        path: /etc/exports
+        line: "/mnt/hpc-shared 172.31.250.0/24(rw,sync,no_subtree_check,no_root_squash)"
+      notify: Restart nfs server
 
 - name: Compute Node Configuration
   hosts: compute_nodes
