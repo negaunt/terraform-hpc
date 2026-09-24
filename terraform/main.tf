@@ -147,6 +147,9 @@ resource "aws_instance" "head_nodes" {
   # allow head node to route compute traffic
   # source_dest_check = false - must do manually in AWS console because 
   # AWS/terraform language issues prevent us from only applying to eth0 
+  lifecycle {
+    ignore_changes = [source_dest_check]
+  }
 
   tags = {
     Name = "head-node-${count.index}"
