@@ -1,0 +1,6 @@
+{{tf.head_node_backend_ips[0]}} head-node-0
+{{tf.head_node_private_ips[0]}} head-node-0-mgmt
+{% for IP in tf.compute_node_private_ips %}
+{{tf.compute_node_backend_ips[loop.index0]}} compute-node-{{loop.index0}}
+{{tf.compute_node_private_ips[loop.index0]}} compute-node-{{loop.index0}}-mgmt
+{% endfor %}
