@@ -1,63 +1,7 @@
 ---
-- name: Base Cluster Configuration
-  hosts: all
-  become: yes
-  
-  tasks:
-    - name: Deploy netplan configuration for the data network
-      copy:
-        dest: /etc/netplan/51-backend.yaml
-        owner: root
-        group: root
-        mode: '0600'
-        content: |
-          network:
-            version: 2
-            ethernets:
-              ens6:
-                dhcp4: true
-                dhcp4-overrides:
-                  use-routes: false
-      notify: Apply netplan
-
-    - name: Set system hostname to match Ansible inventory name
-      hostname:
-        name: "{{ '{{ inventory_hostname }}' }}"
-
-    - name: Update /etc/hosts to resolve the new hostname locally
-      lineinfile:
-        path: /etc/hosts
-        regexp: '^127\.0\.1\.1'
-        line: "127.0.1.1 {{ '{{ inventory_hostname }}' }}"
-        state: present
-
-    - name: Ensure AWS cloud-init does not reset the hostname on reboot
-      lineinfile:
-        path: /etc/cloud/cloud.cfg
-        regexp: '^preserve_hostname:.*'
-        line: 'preserve_hostname: true'
-        state: present
-
-  handlers:
-    - name: Apply netplan
-      command: netplan apply
-
 - hosts: head_node
   become: yes
   tasks:
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-
-    - name: Install common utilities
-      apt:
-        name:
-          - net-tools
-          - nfs-kernel-server
-          - lsscsi
-        state: present
-
     - name: Copy SSH compute key
       ansible.builtin.copy:
         src:  {{ tf.AWS_SSH_PRIV_KEY }} 
@@ -80,14 +24,20 @@
             IdentityFile ~/.ssh/{{ tf.AWS_SSH_PRIV_KEY | basename }}
             StrictHostKeyChecking no
 
-    - name: Add compute node IP mappings to head node /etc/hosts
-      blockinfile:
-        path: /etc/hosts
-        marker: "# {mark} ANSIBLE MANAGED BLOCK - COMPUTE NODES"
-        content: |
-          {{ "{% for host in groups['compute_nodes'] %}" }}
-          {{ "{{ hostvars[host]['ansible_host'] }} {{ host }}" }}
-          {{ "{% endfor %}" }}
+    - name: Enable IP forwarding in kernel for compute traffic 
+      sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        sysctl_set: yes
+        state: present
+        reload: yes
+
+    - name: Configure iptables NAT masquerade for compute traffic
+      iptables:
+        table: nat
+        chain: POSTROUTING
+        out_interface: ens5
+        jump: MASQUERADE
 
     - name: Create shared HPC directory
       file:
@@ -102,3 +52,90 @@
 #        path: /etc/exports
 #        line: "/mnt/hpc-shared 0.0.0.0/16(rw,sync,no_subtree_check,no_root_squash)"
 #      notify: Restart nfs server
+
+- name: Compute Node Configuration
+  hosts: compute_nodes
+  become: yes
+
+  tasks:
+    - name: Route internet traffic through Head Node
+      copy:
+        dest: /etc/netplan/52-nat-gateway.yaml
+        owner: root
+        group: root
+        mode: '0600'
+        content: |
+          network:
+            version: 2
+            ethernets:
+              ens5:
+                dhcp4: true
+                dhcp4-overrides:
+                  use-routes: false
+                routes:
+                  - to: 0.0.0.0/0
+                    via: {{ tf.head_node_private_ips[0] }}
+                    metric: 50
+    - name: Force NAT route to apply immediately
+      command: netplan apply
+
+- name: Base Cluster Configuration
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Deploy netplan configuration for the data network
+      copy:
+        dest: /etc/netplan/51-backend.yaml
+        owner: root
+        group: root
+        mode: '0600'
+        content: |
+          network:
+            version: 2
+            ethernets:
+              ens6:
+                dhcp4: true
+                dhcp4-overrides:
+                  use-routes: false
+
+    - name: Force backend network to apply immediately
+      command: netplan apply
+
+    - name: Set system hostname to match Ansible inventory name
+      hostname:
+        name: "{{ '{{ inventory_hostname }}' }}"
+
+    - name: Update /etc/hosts to resolve the new hostname locally
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1'
+        line: "127.0.1.1 {{ '{{ inventory_hostname }}' }}"
+        state: present
+
+    - name: Add node IP mappings to /etc/hosts 
+      blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - CLUSTER BACKEND NETWORK"
+        block: {{ "\"{{ lookup('file', 'hosts.patch') }}\"" }}
+
+    - name: Ensure AWS cloud-init does not reset the hostname on reboot
+      lineinfile:
+        path: /etc/cloud/cloud.cfg
+        regexp: '^preserve_hostname:.*'
+        line: 'preserve_hostname: true'
+        state: present
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install common utilities
+      apt:
+        name:
+          - net-tools
+          - nfs-kernel-server
+          - lsscsi
+        state: present
+
