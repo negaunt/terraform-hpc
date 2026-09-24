@@ -2,7 +2,10 @@ output "head_node_public_ips" {
   value = aws_eip.head_node_eip.public_ip
 }
 output "head_node_private_ips" {
-  value = [
+  value = aws_instance.head_nodes[*].private_ip
+}
+output "head_node_backend_ips" {
+value = [
     for i in range(0, var.head_nodes) :
     aws_network_interface.internal_nic[i].private_ip
   ]
