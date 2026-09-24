@@ -149,6 +149,15 @@ resource "aws_instance" "head_nodes" {
   }
 }
 
+# assign a static IP to head node eth0 as it has 2 NICs and can't DHCP to eth0
+resource "aws_eip" "head_node_eip" {
+  domain            = "vpc"
+  network_interface = aws_instance.head_nodes[0].primary_network_interface_id
+  tags = {
+    Name = "head-node-eip-0"
+  }
+}
+
 # define hardware for compute nodes 
 resource "aws_instance" "compute_nodes" {
   count         = var.compute_nodes
@@ -194,3 +203,4 @@ resource "aws_network_interface_attachment" "internal_attachment-compute" {
   instance_id          = aws_instance.compute_nodes[count.index].id
   network_interface_id = aws_network_interface.internal_nic[count.index + var.head_nodes].id
 }
+

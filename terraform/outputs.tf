@@ -1,5 +1,5 @@
 output "head_node_public_ips" {
-  value = aws_instance.head_nodes[*].public_ip
+  value = aws_eip.head_node_eip.public_ip
 }
 output "head_node_private_ips" {
   value = [
