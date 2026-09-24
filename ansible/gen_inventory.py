@@ -24,6 +24,8 @@ try:
     with open(tf_file, "r") as file:
         tf_data = json.load(file) 
         tf_data = {k: v.get('value') for k, v in tf_data.items()}
+#        print(f"tf_data = {tf_data}")
+#        print(f"tf_data.head_node_public_ips[0] = {tf_data.head_node_public_ips[0]}")
 except Exception as e:
     print(f"error parsing '{tf_file}': {e}", file=sys.stderr)
     sys.exit(1)
