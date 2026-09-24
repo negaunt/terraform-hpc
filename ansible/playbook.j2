@@ -51,7 +51,6 @@
       lineinfile:
         path: /etc/exports
         line: "/mnt/hpc-shared 172.31.250.0/24(rw,sync,no_subtree_check,no_root_squash)"
-      notify: Restart nfs server
 
 - name: Compute Node Configuration
   hosts: compute_nodes
