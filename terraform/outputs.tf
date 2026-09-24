@@ -13,6 +13,12 @@ output "compute_node_public_ips" {
 output "compute_node_private_ips" {
   value = [
     for i in range(var.head_nodes, var.head_nodes + var.compute_nodes) :
+    aws_instance.compute_nodes[*].private_ip
+  ]
+}
+output "compute_node_backend_ips" {
+value = [
+    for i in range(var.head_nodes, var.head_nodes + var.compute_nodes) :
     aws_network_interface.internal_nic[i].private_ip
   ]
 }
